@@ -2135,18 +2135,24 @@ class BERTopic:
             embeddings: Updated embeddings
         """
         # Create embeddings from the seeded topics
-        seed_topic_list = [" ".join(seed_topic) for seed_topic in self.seed_topic_list]
-        seed_topic_embeddings = self._extract_embeddings(seed_topic_list, verbose=self.verbose)
+        # seed_topic_list = [" ".join(seed_topic) for seed_topic in self.seed_topic_list]
+        # seed_topic_embeddings = self._extract_embeddings(seed_topic_list, verbose=self.verbose)
+        seed_topic_embeddings_list=[]
+        for seed_topic in self.seed_topic_list:
+            seed_sentence_embeddings = self._extract_embeddings(seed_topic, verbose=self.verbose)
+            seed_topic_embeddings_list.append(seed_sentence_embeddings.mean(axis=0))
+
+        seed_topic_embeddings = np.array(seed_topic_embeddings_list)
         seed_topic_embeddings = np.vstack([seed_topic_embeddings, embeddings.mean(axis=0)])
 
         # Label documents that are most similar to one of the seeded topics
         sim_matrix = cosine_similarity(embeddings, seed_topic_embeddings)
         y = [np.argmax(sim_matrix[index]) for index in range(sim_matrix.shape[0])]
-        y = [val if val != len(seed_topic_list) else -1 for val in y]
+        y = [val if val != len(self.seed_topic_list) else -1 for val in y]
 
         # Average the document embeddings related to the seeded topics with the
         # embedding of the seeded topic to force the documents in a cluster
-        for seed_topic in range(len(seed_topic_list)):
+        for seed_topic in range(len(self.seed_topic_list)):
             indices = [index for index, topic in enumerate(y) if topic == seed_topic]
             embeddings[indices] = np.average([embeddings[indices], seed_topic_embeddings[seed_topic]], weights=[3, 1])
         return y, embeddings
